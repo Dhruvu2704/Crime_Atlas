@@ -27,15 +27,31 @@
 
 ## Screenshots
 
-| Page | Preview |
-|------|---------|
-| **Home Page** | ![Home](screenshots/index.png) |
-| **Dashboard** | ![Dashboard](screenshots/dashboard.png) |
-| **Crime Pattern Explorer** | ![Clusters](screenshots/clusters.png) |
-| **Prediction Lab** | ![Predict](screenshots/predict.png) |
-| **Technical Case File** | ![About](screenshots/about.png) |
+### 🏠 Home Page
+![Home Page](screenshots/index.png)
 
-> _Add screenshots to a `/screenshots` folder in the repository root to populate this table._
+---
+
+### 📊 Dashboard — Intelligence Command Center
+![Dashboard Hero](screenshots/dashboard.png)
+
+![Dashboard Detail](screenshots/dashboard2.png)
+
+---
+
+### 🔍 Crime Pattern Explorer
+![Crime Pattern Explorer](screenshots/clusters.png)
+
+---
+
+### 🧪 Prediction Lab — Hero
+![Prediction Lab](screenshots/predict_hero.png)
+
+### 🧪 Prediction Lab — Input Form
+![Prediction Lab Form](screenshots/predict_form.png)
+
+### 🧪 Prediction Lab — Classification Result
+![Prediction Lab Result](screenshots/predict_result.png)
 
 ---
 
@@ -167,9 +183,9 @@ def predict_cluster():
         data['weapon_rate'],
         data['closure_rate']
     ]])
-    scaled    = scaler.transform(features)
-    cluster   = int(model.predict(scaled)[0])
-    distances = model.transform(scaled)[0]
+    scaled     = scaler.transform(features)
+    cluster    = int(model.predict(scaled)[0])
+    distances  = model.transform(scaled)[0]
     confidence = round((1 - distances[cluster] / distances.sum()) * 100, 2)
     return jsonify({
         'cluster': cluster,
@@ -199,6 +215,7 @@ The K-Means model discovered four behaviorally distinct urban crime profiles. La
 | Silhouette Score | 0.26 |
 | Algorithm | K-Means (random_state=42) |
 | Convergence | 14 iterations |
+| Primary Driver | Weapon Crime Rate |
 
 A silhouette score of 0.26 reflects moderate separation — consistent with real-world urban crime data where cities exist on a continuum rather than in perfectly discrete behavioral states.
 
@@ -234,37 +251,39 @@ A silhouette score of 0.26 reflects moderate separation — consistent with real
 ```
 crime-atlas/
 │
-├── app.py                        # Flask application — routes and /predict_cluster endpoint
+├── app.py                          # Flask application — routes and /predict_cluster endpoint
 │
 ├── model/
-│   ├── kmeans_model.pkl          # Trained K-Means model (Joblib)
-│   └── scaler.pkl                # Fitted StandardScaler (Joblib)
+│   ├── kmeans_model.pkl            # Trained K-Means model (Joblib)
+│   └── scaler.pkl                  # Fitted StandardScaler (Joblib)
 │
 ├── notebooks/
 │   └── crime_atlas_analysis.ipynb  # Data cleaning, EDA, model training, PCA
 │
 ├── data/
-│   └── crime_atlas_dataset.csv   # Raw crime records (50 cities, 40,000+ rows)
+│   └── crime_atlas_dataset.csv     # Raw crime records (50 cities, 40,000+ rows)
 │
 ├── templates/
-│   ├── index.html                # Home — Introduction / mission
-│   ├── dashboard.html            # Dashboard — Executive command center
-│   ├── clusters.html             # Crime Pattern Explorer — cluster deep-dive
-│   ├── predict.html              # Prediction Lab — live classification engine
-│   └── about.html                # Technical Case File — complete methodology
+│   ├── index.html                  # Home — Introduction / mission
+│   ├── dashboard.html              # Dashboard — Executive command center
+│   ├── clusters.html               # Crime Pattern Explorer — cluster deep-dive
+│   ├── predict.html                # Prediction Lab — live classification engine
+│   └── about.html                  # Technical Case File — complete methodology
 │
 ├── static/
-│   ├── css/                      # (if extracted from inline styles)
-│   └── js/                       # (if extracted from inline scripts)
+│   ├── css/                        # (if extracted from inline styles)
+│   └── js/                         # (if extracted from inline scripts)
 │
 ├── screenshots/
 │   ├── index.png
 │   ├── dashboard.png
+│   ├── dashboard2.png
 │   ├── clusters.png
-│   ├── predict.png
-│   └── about.png
+│   ├── predict_hero.png
+│   ├── predict_form.png
+│   └── predict_result.png
 │
-├── requirements.txt              # Python dependencies
+├── requirements.txt                # Python dependencies
 └── README.md
 ```
 
@@ -280,7 +299,7 @@ crime-atlas/
 
 **1. Clone the repository**
 ```bash
-git clone https://github.com/yourusername/crime-atlas.git
+git clone https://github.com/Dhruvi2704/crime-atlas.git
 cd crime-atlas
 ```
 
@@ -390,27 +409,27 @@ Content-Type: application/json
 
 ## Sample Prediction
 
-**Input — High Crime City Profile**
+**Input — Outlier City Profile**
 ```json
 {
-  "total_crimes": 8200,
-  "victim_age": 27,
-  "police_deployed": 9,
-  "weapon_rate": 0.71,
-  "closure_rate": 0.38
+  "total_crimes": 600,
+  "victim_age": 44,
+  "police_deployed": 10.1,
+  "weapon_rate": 0.84,
+  "closure_rate": 0.47
 }
 ```
 
 **Output**
 ```json
 {
-  "cluster": 0,
-  "confidence": 84.7,
-  "centroid_distance": 0.917
+  "cluster": 3,
+  "confidence": 95.0,
+  "centroid_distance": 0.180
 }
 ```
 
-**Interpretation:** The city is classified as **Cluster 0 — High Crime Metropolitan**, with 84.7% confidence. High total crimes, young victim age, high weapon involvement, and low case closure rate are all consistent with the Cluster 0 centroid. Active surveillance and reinforced field deployment are recommended.
+**Interpretation:** The city is classified as **Cluster 3 — Outlier Anomalous Signature**, with 95.0% confidence and a centroid distance of 0.180. The signature does not align with the three primary centroids — flagged for analyst review and secondary feature verification.
 
 ---
 
@@ -426,7 +445,7 @@ A score of 0.26 indicates moderate cluster cohesion — appropriate for real-wor
 Reducing the five-feature space to two principal components via PCA produced a scatter plot where the four clusters occupy visually separable regions — confirming that the behavioral groupings discovered by K-Means are structurally valid and not artifacts of the algorithm.
 
 ### Crime Pattern Discovery
-The investigation revealed that cities do not distribute randomly across behavioral space. Four coherent identities emerged entirely from the data: a high-crime metropolitan cohort, a moderate-crime majority, a stable low-crime cohort, and a small group of statistical outliers. These profiles were not defined by an analyst — they were found by the model.
+The investigation revealed that cities do not distribute randomly across behavioral space. Four coherent identities emerged entirely from the data: a high-crime metropolitan cohort, a moderate-crime majority, a stable low-crime cohort, and a small group of statistical outliers. The primary behavioral driver across clusters was identified as **weapon crime rate**. These profiles were not defined by an analyst — they were found by the model.
 
 ---
 
@@ -451,12 +470,12 @@ The investigation revealed that cities do not distribute randomly across behavio
   <tr>
     <td align="center">
       <strong>Dhruvi Srivastava</strong><br/>
-      B.Tech CSE (Artificial Intelligence & Data Science)<br/>
+      B.Tech CSE (Artificial Intelligence &amp; Data Science)<br/>
       GLA University<br/>
       <br/>
-      <a href="(https://github.com/Dhruvu2704)">GitHub</a> ·
-      <a href="(https://www.linkedin.com/in/dhruvi-srivastava-317627375/)">LinkedIn</a> ·
-      <a href="dhruvisrivastava27@gmail.com">Email</a>
+      <a href="https://github.com/Dhruvi2704">GitHub</a> ·
+      <a href="https://www.linkedin.com/in/dhruvi-srivastava-317627375/">LinkedIn</a> ·
+      <a href="mailto:dhruvisrivastava27@gmail.com">Email</a>
     </td>
   </tr>
 </table>
