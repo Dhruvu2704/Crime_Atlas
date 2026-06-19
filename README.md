@@ -454,9 +454,9 @@ The investigation revealed that cities do not distribute randomly across behavio
       B.Tech CSE (Artificial Intelligence & Data Science)<br/>
       GLA University<br/>
       <br/>
-      <a href="https://github.com/yourusername">GitHub</a> ·
-      <a href="https://linkedin.com/in/yourprofile">LinkedIn</a> ·
-      <a href="mailto:your@email.com">Email</a>
+      <a href="(https://github.com/Dhruvu2704)">GitHub</a> ·
+      <a href="(https://www.linkedin.com/in/dhruvi-srivastava-317627375/)">LinkedIn</a> ·
+      <a href="dhruvisrivastava27@gmail.com">Email</a>
     </td>
   </tr>
 </table>
