@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Crime Pattern Explorer — Crime Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0A0A;
+    --panel:#141414;
+    --panel-2:#1a1a1a;
+    --accent:#B91C1C;
+    --accent-dim:rgba(185,28,28,.35);
+    --text:#E5E5E5;
+    --muted:#9CA3AF;
+    --border:rgba(255,255,255,.08);
+    --border-strong:rgba(255,255,255,.14);
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 3px);
+    mix-blend-mode:overlay;
+  }
+  a{color:inherit;text-decoration:none}
+  h1,h2,h3,.bebas{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em}
+  .container{max-width:1280px;margin:0 auto;padding:0 32px}
+
+  /* NAV */
+  nav.top{
+    position:sticky;top:0;z-index:50;
+    background:rgba(10,10,10,.85);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:12px;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.12em}
+  .brand .dot{width:10px;height:10px;background:var(--accent);border-radius:50%;box-shadow:0 0 12px var(--accent)}
+  .nav-links{display:flex;gap:28px;font-size:13px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+  .nav-links a:hover{color:var(--text)}
+  .nav-links a.active{color:var(--text);position:relative}
+  .nav-links a.active::after{content:"";position:absolute;left:0;right:0;bottom:-22px;height:2px;background:var(--accent)}
+
+  /* HERO */
+  .hero{position:relative;padding:120px 0 80px;border-bottom:1px solid var(--border);overflow:hidden}
+  .hero::before{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(800px 400px at 20% 20%, rgba(185,28,28,.10), transparent 60%),
+      linear-gradient(180deg, transparent, rgba(0,0,0,.6));
+    pointer-events:none;
+  }
+  .hero::after{
+    content:"";position:absolute;inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size:48px 48px;
+    mask-image:radial-gradient(ellipse at center, black 40%, transparent 80%);
+    pointer-events:none;opacity:.5;
+  }
+  .badge-row{display:flex;align-items:center;gap:12px;margin-bottom:24px;position:relative;z-index:2}
+  .badge{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:6px 12px;border:1px solid var(--border-strong);
+    background:rgba(20,20,20,.6);
+    font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);
+  }
+  .badge.alert{border-color:var(--accent-dim);color:#fca5a5}
+  .badge .pulse{width:7px;height:7px;background:var(--accent);border-radius:50%;
+    box-shadow:0 0 0 0 var(--accent);animation:pulse 2s infinite}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(185,28,28,.7)}
+    70%{box-shadow:0 0 0 10px rgba(185,28,28,0)}
+    100%{box-shadow:0 0 0 0 rgba(185,28,28,0)}
+  }
+  h1.hero-title{
+    font-size:clamp(56px,9vw,128px);line-height:.95;margin-bottom:20px;
+    position:relative;z-index:2;
+  }
+  .hero-sub{max-width:680px;font-size:17px;color:var(--muted);line-height:1.6;position:relative;z-index:2}
+  .meta-row{
+    display:flex;flex-wrap:wrap;gap:32px;margin-top:48px;padding-top:28px;
+    border-top:1px solid var(--border);position:relative;z-index:2;
+  }
+  .meta{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .meta strong{display:block;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.08em;margin-top:6px}
+
+  /* SECTION HEADERS */
+  section{padding:96px 0;border-bottom:1px solid var(--border);position:relative}
+  .section-label{
+    display:flex;align-items:center;gap:14px;margin-bottom:18px;
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);
+  }
+  .section-label .num{
+    color:var(--accent);font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.1em;
+  }
+  .section-label .bar{flex:0 0 36px;height:1px;background:var(--accent)}
+  h2.section-title{font-size:clamp(36px,5vw,64px);line-height:1;margin-bottom:14px}
+  .section-sub{color:var(--muted);max-width:680px;font-size:15px;line-height:1.6;margin-bottom:48px}
+
+  /* PCA MAP */
+  #pca-map-container{
+    position:relative;height:560px;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(185,28,28,.06), transparent 60%),
+      linear-gradient(180deg, #0d0d0d, #050505);
+    border:1px solid var(--border-strong);
+    overflow:hidden;
+  }
+  .map-grid{
+    position:absolute;inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+    background-size:40px 40px;
+  }
+  .map-grid::after{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(circle at center, transparent 30%, rgba(0,0,0,.7) 90%);
+  }
+  .map-rings{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none}
+  .map-rings div{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    border:1px solid rgba(185,28,28,.18);border-radius:50%;
+  }
+  .map-rings .r1{width:160px;height:160px}
+  .map-rings .r2{width:300px;height:300px}
+  .map-rings .r3{width:460px;height:460px;border-color:rgba(185,28,28,.10)}
+  .map-rings .r4{width:640px;height:640px;border-color:rgba(185,28,28,.06)}
+  .scanner{
+    position:absolute;inset:0;
+    background:linear-gradient(180deg, transparent 0%, rgba(185,28,28,.10) 49%, rgba(185,28,28,.25) 50%, rgba(185,28,28,.10) 51%, transparent 100%);
+    height:120px;animation:scan 6s linear infinite;mix-blend-mode:screen;
+  }
+  @keyframes scan{
+    0%{transform:translateY(-120px)}
+    100%{transform:translateY(560px)}
+  }
+  .crosshair{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:24px;height:24px;
+  }
+  .crosshair::before,.crosshair::after{
+    content:"";position:absolute;background:var(--accent);
+  }
+  .crosshair::before{left:50%;top:0;bottom:0;width:1px;transform:translateX(-50%)}
+  .crosshair::after{top:50%;left:0;right:0;height:1px;transform:translateY(-50%)}
+  .map-points{position:absolute;inset:0}
+  .pt{
+    position:absolute;width:10px;height:10px;border-radius:50%;
+    background:var(--accent);box-shadow:0 0 12px var(--accent);
+    transform:translate(-50%,-50%);
+  }
+  .pt.alpha{background:#ef4444;box-shadow:0 0 14px #ef4444}
+  .pt.bravo{background:#f59e0b;box-shadow:0 0 14px #f59e0b}
+  .pt.charlie{background:#10b981;box-shadow:0 0 14px #10b981}
+  .pt.delta{background:#8b5cf6;box-shadow:0 0 14px #8b5cf6}
+  .pt::after{
+    content:"";position:absolute;inset:-6px;border-radius:50%;
+    border:1px solid currentColor;opacity:.4;animation:ping 3s ease-out infinite;
+  }
+  @keyframes ping{
+    0%{transform:scale(.6);opacity:.6}
+    100%{transform:scale(3);opacity:0}
+  }
+  .map-overlay{
+    position:absolute;top:24px;left:24px;right:24px;
+    display:flex;justify-content:space-between;align-items:flex-start;
+    z-index:5;pointer-events:none;
+  }
+  .map-overlay .title{
+    font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.12em;
+  }
+  .map-overlay .meta{font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+  .map-bottom{
+    position:absolute;left:24px;right:24px;bottom:24px;z-index:5;
+    display:flex;justify-content:space-between;align-items:flex-end;gap:24px;
+  }
+  .map-explain{
+    max-width:480px;font-size:13px;color:var(--muted);line-height:1.6;
+    padding:14px 16px;background:rgba(10,10,10,.7);border:1px solid var(--border);
+    backdrop-filter:blur(6px);
+  }
+  .map-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .map-legend span{display:inline-flex;align-items:center;gap:6px}
+  .map-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .corner{position:absolute;width:18px;height:18px;border:1px solid var(--accent);z-index:4}
+  .corner.tl{top:10px;left:10px;border-right:none;border-bottom:none}
+  .corner.tr{top:10px;right:10px;border-left:none;border-bottom:none}
+  .corner.bl{bottom:10px;left:10px;border-right:none;border-top:none}
+  .corner.br{bottom:10px;right:10px;border-left:none;border-top:none}
+
+  /* DEEP CLUSTER PROFILES */
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+  .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+  @media (max-width:1024px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:640px){.grid-4,.grid-2{grid-template-columns:1fr}.container{padding:0 20px}.nav-links{display:none}}
+
+  .cluster-card{
+    position:relative;background:var(--panel);border:1px solid var(--border);
+    overflow:hidden;transition:all .3s ease;
+  }
+  .cluster-card:hover{transform:translateY(-3px);border-color:var(--border-strong)}
+  .cluster-header{
+    padding:20px 24px;border-bottom:1px solid var(--border);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .cluster-id{font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+  .cluster-id b{display:block;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.1em;margin-top:4px}
+  .threat{font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:4px 8px;border:1px solid var(--border-strong)}
+  .threat.high{color:#fca5a5;border-color:var(--accent-dim);background:rgba(185,28,28,.1)}
+  .threat.medium{color:#fcd34d;border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.08)}
+  .threat.low{color:#86efac;border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.08)}
+  .threat.special{color:#c4b5fd;border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.08)}
+  .cluster-body{padding:22px 24px}
+  .cluster-card h3{font-size:30px;line-height:1;margin:8px 0 6px}
+  .cluster-card .sub{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.14em;margin-bottom:14px}
+  .cluster-card p{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:18px}
+
+  /* Cities list */
+  .cities-block{
+    padding:14px 16px;background:rgba(0,0,0,.3);border:1px solid var(--border);margin-bottom:14px;
+  }
+  .cities-block .lbl{font-family:var(--mono);font-size:9px;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;margin-bottom:8px}
+  .city-tags{display:flex;flex-wrap:wrap;gap:6px}
+  .city-tag{
+    font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+    padding:3px 8px;border:1px solid var(--border-strong);color:var(--text);background:var(--panel-2);
+  }
+
+  /* Characteristics list */
+  .chars{list-style:none;padding:0;margin-top:14px}
+  .chars li{
+    display:flex;align-items:flex-start;gap:8px;
+    font-size:12px;color:var(--muted);padding:5px 0;
+    border-bottom:1px solid rgba(255,255,255,.04);line-height:1.4;
+  }
+  .chars li:last-child{border-bottom:none}
+  .chars li::before{content:"→";color:var(--accent);flex-shrink:0;font-family:var(--mono);font-size:11px;margin-top:1px}
+
+  /* EXPANDED PROFILE CARDS — Full detail rows */
+  .profile-full{
+    background:var(--panel);border:1px solid var(--border);margin-bottom:20px;overflow:hidden;
+    transition:border-color .3s;
+  }
+  .profile-full:hover{border-color:var(--border-strong)}
+  .profile-full-header{
+    display:grid;grid-template-columns:auto 1fr auto;gap:24px;align-items:center;
+    padding:28px 32px;border-bottom:1px solid var(--border);
+    background:rgba(0,0,0,.2);
+  }
+  .pf-id{font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:var(--accent);text-transform:uppercase}
+  .pf-name{font-family:'Bebas Neue';font-size:36px;letter-spacing:.06em;color:#fff;line-height:1}
+  .pf-name .sub{font-family:'Inter';font-size:12px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-top:4px;font-weight:400}
+  .pf-badge{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;padding:6px 12px;border:1px solid}
+  .pf-badge.high{color:#fca5a5;border-color:rgba(185,28,28,.5);background:rgba(185,28,28,.08)}
+  .pf-badge.med{color:#fcd34d;border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.06)}
+  .pf-badge.low{color:#86efac;border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.06)}
+  .pf-badge.special{color:#c4b5fd;border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.06)}
+  .profile-full-body{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+  .pf-col{padding:28px 32px;border-right:1px solid var(--border)}
+  .pf-col:last-child{border-right:none}
+  .pf-col-title{font-family:var(--mono);font-size:9px;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;margin-bottom:16px}
+  .pf-col p{font-size:13.5px;color:var(--muted);line-height:1.7}
+  .pf-cities-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+  .pf-city{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:3px 8px;border:1px solid var(--border-strong);color:var(--text);background:rgba(0,0,0,.3)}
+  .pf-chars{list-style:none}
+  .pf-chars li{font-size:13px;color:var(--muted);padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);display:flex;gap:8px;align-items:flex-start;line-height:1.4}
+  .pf-chars li:last-child{border-bottom:none}
+  .pf-chars li::before{content:"→";color:var(--accent);flex-shrink:0;font-family:var(--mono);font-size:11px;margin-top:1px}
+
+  /* FEATURE COMPARISON */
+  .comparison-table{
+    width:100%;border-collapse:collapse;
+    background:var(--panel);border:1px solid var(--border-strong);
+  }
+  .comparison-table th{
+    font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--accent);padding:16px 18px;text-align:left;
+    border-bottom:1px solid var(--border-strong);background:rgba(185,28,28,.06);
+    border-right:1px solid var(--border);
+  }
+  .comparison-table th:last-child{border-right:none}
+  .comparison-table td{
+    padding:14px 18px;font-size:13px;border-bottom:1px solid var(--border);
+    border-right:1px solid var(--border);vertical-align:middle;
+  }
+  .comparison-table td:last-child{border-right:none}
+  .comparison-table tr:last-child td{border-bottom:none}
+  .comparison-table tr:hover td{background:rgba(255,255,255,.02)}
+  .comparison-table .row-label{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase}
+  .bar-cell{min-width:120px}
+  .inline-bar{height:4px;background:rgba(255,255,255,.06);margin-top:4px}
+  .inline-bar-fill{height:100%;background:var(--accent)}
+  .fill-alpha{background:#ef4444}
+  .fill-bravo{background:#f59e0b}
+  .fill-charlie{background:#10b981}
+  .fill-delta{background:#8b5cf6}
+  .val-cell{font-family:'Bebas Neue';font-size:22px;letter-spacing:.06em}
+
+  /* EVIDENCE BOARD */
+  .board{
+    position:relative;background:
+      radial-gradient(600px 400px at 30% 30%, rgba(185,28,28,.05), transparent 60%),
+      var(--panel);
+    border:1px solid var(--border-strong);padding:48px 32px;overflow:hidden;
+  }
+  .board::before{
+    content:"";position:absolute;inset:0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+    background-size:32px 32px;pointer-events:none;
+  }
+  .board-grid{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:20px;z-index:2}
+  @media (max-width:1024px){.board-grid{grid-template-columns:repeat(2,1fr)}}
+  .ev-card{
+    position:relative;background:#0e0e0e;border:1px solid var(--border-strong);
+    padding:22px 18px;transition:transform .3s ease;
+  }
+  .ev-card:hover{transform:translateY(-3px) rotate(-.4deg)}
+  .ev-card::before{
+    content:"";position:absolute;left:50%;top:-8px;transform:translateX(-50%);
+    width:14px;height:14px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 8px var(--accent),inset 0 -2px 4px rgba(0,0,0,.5);
+  }
+  .ev-card .label{font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+  .ev-card .val{font-family:'Bebas Neue',sans-serif;font-size:38px;margin:8px 0 4px;color:var(--text);letter-spacing:.04em}
+  .ev-card .delta{font-size:11px;color:var(--accent);letter-spacing:.12em}
+  .ev-card .bar-track{margin-top:12px;height:3px;background:rgba(255,255,255,.06);position:relative}
+  .ev-card .bar-fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
+  .board-label{position:absolute;top:-12px;left:28px;background:var(--bg);padding:0 12px;font-family:var(--mono);font-size:10px;letter-spacing:.25em;color:var(--accent);text-transform:uppercase}
+
+  /* SUMMARY */
+  .summary{
+    position:relative;background:var(--panel);border:1px solid var(--border-strong);
+    padding:64px 56px;overflow:hidden;
+  }
+  .summary::before{
+    content:"CLASSIFIED";position:absolute;right:-40px;top:32px;transform:rotate(20deg);
+    font-family:'Bebas Neue',sans-serif;font-size:120px;color:rgba(185,28,28,.05);
+    letter-spacing:.1em;pointer-events:none;
+  }
+  .summary .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;border-bottom:1px solid var(--border);padding-bottom:20px}
+  .summary .head .left{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+  .summary .head .right{font-size:10px;letter-spacing:.22em;color:var(--accent);text-transform:uppercase}
+  .summary h2{font-size:clamp(40px,5vw,64px);line-height:1;margin-bottom:24px}
+  .summary p{max-width:760px;font-size:17px;line-height:1.7;color:var(--muted)}
+  .sig{display:flex;justify-content:space-between;align-items:flex-end;margin-top:48px;padding-top:24px;border-top:1px dashed var(--border)}
+  .sig .who{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .sig .who b{display:block;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.1em;margin-top:6px}
+  .seal{
+    width:96px;height:96px;border:1.5px solid var(--accent);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:.18em;color:var(--accent);
+    line-height:1.2;padding:8px;transform:rotate(-6deg);
+  }
+
+  /* FOOTER */
+  footer{padding:48px 0;text-align:center;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+
+  /* ANIMATIONS on scroll */
+  .reveal{opacity:0;transform:translateY(20px);transition:opacity .8s ease,transform .8s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  @media (max-width:780px){
+    .profile-full-body{grid-template-columns:1fr}
+    .pf-col{border-right:none;border-bottom:1px solid var(--border)}
+    .pf-col:last-child{border-bottom:none}
+    .profile-full-header{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="container nav-inner">
+    <div class="brand"><span class="dot"></span>CRIME ATLAS</div>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/dashboard">Command</a>
+      <a href="/clusters" class="active">Patterns</a>
+      <a href="/predict">Predictor</a>
+      <a href="/about">Case File</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="container">
+    <div class="badge-row">
+      <span class="badge"><span class="pulse"></span>ML Results · K-Means Output</span>
+      <span class="badge alert">4 Crime Profiles Discovered</span>
+      <span class="badge">K-Means · K=4</span>
+    </div>
+    <h1 class="hero-title">Crime Pattern<br/>Explorer</h1>
+    <p class="hero-sub">Four behavioral profiles. Discovered by K-Means clustering — not assigned by analysts. Each cluster is a distinct crime identity, surfaced entirely from the data across 50 Indian cities.</p>
+    <div class="meta-row">
+      <div class="meta">Clusters Found<strong>4</strong></div>
+      <div class="meta">Cities Profiled<strong>50</strong></div>
+      <div class="meta">Silhouette Score<strong>0.26</strong></div>
+      <div class="meta">Primary Driver<strong>Weapon Rate</strong></div>
+    </div>
+  </div>
+</header>
+
+<!-- PCA MAP -->
+<section>
+  <div class="container">
+    <div class="section-label reveal"><span class="num">01</span><span class="bar"></span>PCA Visualization</div>
+    <h2 class="section-title reveal">The Pattern Map</h2>
+    <p class="section-sub reveal">Each dot is a city. Cities close together share similar crime profiles. The PCA map reduces 5 crime features into 2 dimensions — proximity is behavioral similarity, not geography. Four distinct groupings are immediately visible.</p>
+
+    <div id="pca-map-container" class="reveal">
+      <div class="map-grid"></div>
+      <div class="map-rings">
+        <div class="r4"></div><div class="r3"></div><div class="r2"></div><div class="r1"></div>
+      </div>
+      <div class="scanner"></div>
+      <div class="crosshair"></div>
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+
+      <div class="map-overlay">
+        <div>
+          <div class="title">PCA · Crime Behavior Map</div>
+          <div class="meta" style="font-family:var(--mono)">2D Projection · 5 Features → 2 Components</div>
+        </div>
+        <div class="meta" style="text-align:right;font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase">PC1 — Crime Volume &amp; Weapon Rate<br/>PC2 — Demographics &amp; Closure Rate</div>
+      </div>
+
+      <div class="map-points" id="mapPoints"></div>
+
+      <div class="map-bottom">
+        <div class="map-explain">
+          Cluster 0 (red) sits at high PC1 values — maximum crime volume and weapon rate. Cluster 2 (green) occupies the opposite end. Cluster 3 outliers (purple) drift away from all centroids — their crime signatures resist classification.
+        </div>
+        <div class="map-legend">
+          <span><i style="background:#ef4444"></i>Cluster 0 · High Crime Metro</span>
+          <span><i style="background:#f59e0b"></i>Cluster 1 · Moderate</span>
+          <span><i style="background:#10b981"></i>Cluster 2 · Low Crime</span>
+          <span><i style="background:#8b5cf6"></i>Cluster 3 · Outliers</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLUSTER 0 — HIGH CRIME METRO -->
+<section>
+  <div class="container">
+    <div class="section-label reveal"><span class="num">02</span><span class="bar"></span>Cluster 0</div>
+    <h2 class="section-title reveal">High Crime Metropolitan Cities</h2>
+    <p class="section-sub reveal">The most intense crime profile in the dataset. Dense urban centers where incident volume, weapon involvement, and police deployment all peak — yet closure rates fail to keep pace.</p>
+
+    <div class="profile-full reveal">
+      <div class="profile-full-header">
+        <div><div class="pf-id">CLUSTER 0 · PATTERN ALPHA</div></div>
+        <div class="pf-name">High Crime Metropolitan<div class="sub">Dense Urban · Maximum Threat</div></div>
+        <div class="pf-badge high">Threat: HIGH</div>
+      </div>
+      <div class="profile-full-body">
+        <div class="pf-col">
+          <div class="pf-col-title">// Crime Profile Summary</div>
+          <p>Major metros with the nation's highest crime volumes. Total crimes are very high, weapon crime rates are significantly elevated, and police deployment is heavy — but case closure rates remain moderate, unable to keep pace with incident volume. Younger average victim age compared to other clusters.</p>
+        </div>
+        <div class="pf-col">
+          <div class="pf-col-title">// Characteristics</div>
+          <ul class="pf-chars">
+            <li>Very high total crime volume — primary PCA driver</li>
+            <li>Elevated weapon crime rate (~34% of incidents)</li>
+            <li>Highest police deployment per city</li>
+            <li>Moderate case closure rate (≈58%) despite heavy resources</li>
+            <li>Younger average victim age (28–34)</li>
+            <li>Tightly clustered in PCA — cities are behaviorally similar</li>
+          </ul>
+        </div>
+        <div class="pf-col">
+          <div class="pf-col-title">// Cities in This Cluster</div>
+          <div class="pf-cities-list">
+            <span class="pf-city">Delhi</span>
+            <span class="pf-city">Mumbai</span>
+            <span class="pf-city">Bangalore</span>
+            <span class="pf-city">Kolkata</span>
+            <span class="pf-city">Hyderabad</span>
+            <span class="pf-city">Chennai</span>
+            <span class="pf-city">Ahmedabad</span>
+            <span class="pf-city">Surat</span>
+            <span class="pf-city">Kanpur</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLUSTER 1 — MODERATE -->
+<section>
+  <div class="container">
+    <div class="section-label reveal"><span class="num">03</span><span class="bar"></span>Cluster 1</div>
+    <h2 class="section-title reveal">Moderate Crime Cities</h2>
+    <p class="section-sub reveal">The largest cluster by population. Mid-tier urban centers with measurable but contained crime activity — balanced between enforcement resources and incident rate.</p>
+
+    <div class="profile-full reveal">
+      <div class="profile-full-header">
+        <div><div class="pf-id">CLUSTER 1 · PATTERN BRAVO</div></div>
+        <div class="pf-name">Moderate Crime Cities<div class="sub">Tier-2 Urban · Stable Activity</div></div>
+        <div class="pf-badge med">Threat: MEDIUM</div>
+      </div>
+      <div class="profile-full-body">
+        <div class="pf-col">
+          <div class="pf-col-title">// Crime Profile Summary</div>
+          <p>Mid-sized cities with steady, mixed-category crime activity. No single feature dominates — total crimes are moderate, weapon rates are mixed, and police deployment is proportional. Case closure rates are stable. The most numerically populated cluster, accounting for 32% of all cities profiled.</p>
+        </div>
+        <div class="pf-col">
+          <div class="pf-col-title">// Characteristics</div>
+          <ul class="pf-chars">
+            <li>Moderate total crime volume</li>
+            <li>Mixed weapon crime rate (~20% of incidents)</li>
+            <li>Proportional police deployment</li>
+            <li>Stable case closure rate (≈63%)</li>
+            <li>Average victim age distribution (32–38)</li>
+            <li>Consistent enforcement response across cases</li>
+          </ul>
+        </div>
+        <div class="pf-col">
+          <div class="pf-col-title">// Cities in This Cluster</div>
+          <div class="pf-cities-list">
+            <span class="pf-city">Pune</span>
+            <span class="pf-city">Jaipur</span>
+            <span class="pf-city">Lucknow</span>
+            <span class="pf-city">Nagpur</span>
+            <span class="pf-city">Visakhapatnam</span>
+            <span class="pf-city">Bhopal</span>
+            <span class="pf-city">Ludhiana</span>
+            <span class="pf-city">Agra</span>
+            <span class="pf-city">Meerut</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLUSTER 2 — LOW CRIME -->
+<section>
+  <div class="container">
+    <div class="section-label reveal"><span class="num">04</span><span class="bar"></span>Cluster 2</div>
+    <h2 class="section-title reveal">Low Crime Cities</h2>
+    <p class="section-sub reveal">The benchmark cluster. Smaller jurisdictions with the lowest crime density in the dataset — minimal weapon involvement, high closure rates, and lean but effective enforcement.</p>
+
+    <div class="profile-full reveal">
+      <div class="profile-full-header">
+        <div><div class="pf-id">CLUSTER 2 · PATTERN CHARLIE</div></div>
+        <div class="pf-name">Low Crime Cities<div class="sub">Smaller Urban · Contained Profile</div></div>
+        <div class="pf-badge low">Threat: LOW</div>
+      </div>
+      <div class="profile-full-body">
+        <div class="pf-col">
+          <div class="pf-col-title">// Crime Profile Summary</div>
+          <p>The safest cluster in the dataset. These smaller urban zones have the lowest total crime counts, minimal weapon involvement, and the highest case closure rates — suggesting efficient enforcement with far fewer resources. Older average victim age signals a different social exposure pattern entirely.</p>
+        </div>
+        <div class="pf-col">
+          <div class="pf-col-title">// Characteristics</div>
+          <ul class="pf-chars">
+            <li>Low total crime volume</li>
+            <li>Minimal weapon crime rate (~9% of incidents)</li>
+            <li>Lean but effective police deployment</li>
+            <li>Highest case closure rate (≈71%)</li>
+            <li>Older average victim age (36–44)</li>
+            <li>Consistent and stable enforcement throughput</li>
+          </ul>
+        </div>
+        <div class="pf-col">
+          <div class="pf-col-title">// Cities in This Cluster</div>
+          <div class="pf-cities-list">
+            <span class="pf-city">Chandigarh</span>
+            <span class="pf-city">Indore</span>
+            <span class="pf-city">Vadodara</span>
+            <span class="pf-city">Coimbatore</span>
+            <span class="pf-city">Kochi</span>
+            <span class="pf-city">Thiruvananthapuram</span>
+            <span class="pf-city">Mysore</span>
+            <span class="pf-city">Rajkot</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLUSTER 3 — OUTLIERS -->
+<section>
+  <div class="container">
+    <div class="section-label reveal"><span class="num">05</span><span class="bar"></span>Cluster 3</div>
+    <h2 class="section-title reveal">Outlier Cities</h2>
+    <p class="section-sub reveal">The anomaly cluster. Cities whose crime signatures resist classification with any primary centroid. Their patterns are genuinely unusual — and that divergence is itself the finding.</p>
+
+    <div class="profile-full reveal">
+      <div class="profile-full-header">
+        <div><div class="pf-id">CLUSTER 3 · PATTERN DELTA</div></div>
+        <div class="pf-name">Outlier Cities<div class="sub">Anomalous · Manual Review Required</div></div>
+        <div class="pf-badge special">Threat: SPECIAL REVIEW</div>
+      </div>
+      <div class="profile-full-body">
+        <div class="pf-col">
+          <div class="pf-col-title">// Crime Profile Summary</div>
+          <p>Cities that the model flags as genuinely anomalous. High weapon rate without proportional crime volume, or unusual demographic concentrations, place these cities outside the three primary profiles. Their distance from all centroids in PCA space is the defining feature — requiring individual policy attention.</p>
+        </div>
+        <div class="pf-col">
+          <div class="pf-col-title">// Characteristics</div>
+          <ul class="pf-chars">
+            <li>Variable total crime volume — no dominant pattern</li>
+            <li>Anomalous weapon crime rate relative to volume</li>
+            <li>Irregular police deployment patterns</li>
+            <li>Inconsistent case closure rate across reporting periods</li>
+            <li>Unique demographic skew — victim age distribution atypical</li>
+            <li>Maximum centroid distance in PCA projection</li>
+          </ul>
+        </div>
+        <div class="pf-col">
+          <div class="pf-col-title">// Cities in This Cluster</div>
+          <div class="pf-cities-list">
+            <span class="pf-city">Srinagar</span>
+            <span class="pf-city">Patna</span>
+            <span class="pf-city">Guwahati</span>
+            <span class="pf-city">Raipur</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURE COMPARISON TABLE -->
+<section>
+  <div class="container">
+    <div class="section-label reveal"><span class="num">06</span><span class="bar"></span>Cluster Comparison</div>
+    <h2 class="section-title reveal">Feature Profile by Cluster</h2>
+    <p class="section-sub reveal">How each cluster compares across the five features that drove the model. Bars show relative intensity within each feature — not absolute values.</p>
+
+    <div class="reveal" style="overflow-x:auto">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Cluster 0 · High Crime Metro</th>
+            <th>Cluster 1 · Moderate</th>
+            <th>Cluster 2 · Low Crime</th>
+            <th>Cluster 3 · Outlier</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-label">Total Crimes</td>
+            <td class="bar-cell"><div class="val-cell" style="color:#ef4444">Very High</div><div class="inline-bar"><div class="inline-bar-fill fill-alpha" style="width:94%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell" style="color:#f59e0b">Moderate</div><div class="inline-bar"><div class="inline-bar-fill fill-bravo" style="width:56%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell" style="color:#10b981">Low</div><div class="inline-bar"><div class="inline-bar-fill fill-charlie" style="width:24%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell" style="color:#8b5cf6">Variable</div><div class="inline-bar"><div class="inline-bar-fill fill-delta" style="width:48%"></div></div></td>
+          </tr>
+          <tr>
+            <td class="row-label">Avg Victim Age</td>
+            <td class="bar-cell"><div class="val-cell">28–34</div><div class="inline-bar"><div class="inline-bar-fill fill-alpha" style="width:38%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell">32–38</div><div class="inline-bar"><div class="inline-bar-fill fill-bravo" style="width:52%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell">36–44</div><div class="inline-bar"><div class="inline-bar-fill fill-charlie" style="width:68%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell">Varied</div><div class="inline-bar"><div class="inline-bar-fill fill-delta" style="width:40%"></div></div></td>
+          </tr>
+          <tr>
+            <td class="row-label">Police Deployed</td>
+            <td class="bar-cell"><div class="val-cell" style="color:#ef4444">Heavy</div><div class="inline-bar"><div class="inline-bar-fill fill-alpha" style="width:88%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell">Moderate</div><div class="inline-bar"><div class="inline-bar-fill fill-bravo" style="width:54%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell" style="color:#10b981">Lean</div><div class="inline-bar"><div class="inline-bar-fill fill-charlie" style="width:30%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell">Irregular</div><div class="inline-bar"><div class="inline-bar-fill fill-delta" style="width:44%"></div></div></td>
+          </tr>
+          <tr>
+            <td class="row-label">Weapon Crime Rate</td>
+            <td class="bar-cell"><div class="val-cell" style="color:#ef4444">High · 34%</div><div class="inline-bar"><div class="inline-bar-fill fill-alpha" style="width:88%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell">Mixed · 20%</div><div class="inline-bar"><div class="inline-bar-fill fill-bravo" style="width:48%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell" style="color:#10b981">Low · 9%</div><div class="inline-bar"><div class="inline-bar-fill fill-charlie" style="width:18%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell" style="color:#8b5cf6">Anomalous</div><div class="inline-bar"><div class="inline-bar-fill fill-delta" style="width:72%"></div></div></td>
+          </tr>
+          <tr>
+            <td class="row-label">Case Closure Rate</td>
+            <td class="bar-cell"><div class="val-cell">58%</div><div class="inline-bar"><div class="inline-bar-fill fill-alpha" style="width:58%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell">63%</div><div class="inline-bar"><div class="inline-bar-fill fill-bravo" style="width:63%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell" style="color:#10b981">71%</div><div class="inline-bar"><div class="inline-bar-fill fill-charlie" style="width:71%"></div></div></td>
+            <td class="bar-cell"><div class="val-cell">Erratic</div><div class="inline-bar"><div class="inline-bar-fill fill-delta" style="width:38%"></div></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- AGGREGATE FEATURE SIGNALS -->
+<section>
+  <div class="container">
+    <div class="section-label reveal"><span class="num">07</span><span class="bar"></span>Dataset Signals</div>
+    <h2 class="section-title reveal">Overall Feature Readout</h2>
+    <p class="section-sub reveal">Aggregate values across all 50 cities and all four clusters. These figures represent the complete dataset baseline.</p>
+
+    <div class="board reveal" style="position:relative">
+      <div class="board-label">FEATURE READOUT · ALL 50 CITIES · AGGREGATE</div>
+      <div class="board-grid">
+        <div class="ev-card">
+          <div class="label">Total Crimes</div>
+          <div class="val">40,160</div>
+          <div class="delta">▲ Primary PCA driver</div>
+          <div class="bar-track"><div class="bar-fill" style="width:88%"></div></div>
+        </div>
+        <div class="ev-card">
+          <div class="label">Avg Victim Age</div>
+          <div class="val">34.2</div>
+          <div class="delta">— Cross-cluster variance</div>
+          <div class="bar-track"><div class="bar-fill" style="width:46%"></div></div>
+        </div>
+        <div class="ev-card">
+          <div class="label">Police Deployed</div>
+          <div class="val">12.4K</div>
+          <div class="delta">▲ High between-cluster variance</div>
+          <div class="bar-track"><div class="bar-fill" style="width:74%"></div></div>
+        </div>
+        <div class="ev-card">
+          <div class="label">Weapon Crime Rate</div>
+          <div class="val">28.6%</div>
+          <div class="delta">▲ Strongest cluster separator</div>
+          <div class="bar-track"><div class="bar-fill" style="width:82%"></div></div>
+        </div>
+        <div class="ev-card">
+          <div class="label">Case Closure Rate</div>
+          <div class="val">61.3%</div>
+          <div class="delta">▼ Weakest PCA signal</div>
+          <div class="bar-track"><div class="bar-fill" style="width:36%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLOSING REPORT -->
+<section style="border-bottom:none">
+  <div class="container">
+    <div class="section-label reveal"><span class="num">08</span><span class="bar"></span>Pattern Summary</div>
+
+    <div class="summary reveal">
+      <div class="head">
+        <div class="left">Official Pattern Report · File 04-CL</div>
+        <div class="right">● Classified — Internal Use Only</div>
+      </div>
+      <h2>Four Profiles. One Country.</h2>
+      <p>The K-Means model did not create these categories — it found them already embedded in the data. High-crime metros, moderate mid-tier cities, stable low-crime zones, and genuinely anomalous outliers. Four behavioral fingerprints, each demanding a different response from those who study crime.</p>
+      <div class="sig">
+        <div class="who">Profiled By<b>Pattern Analysis Unit</b></div>
+        <div class="who" style="text-align:center">Date<b>2025 · CCC-IN</b></div>
+        <div class="seal">Crime<br/>Atlas<br/>Seal</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>© Crime Atlas · Pattern Analysis Unit · K-Means · PCA · Silhouette Score 0.26</footer>
+
+<script>
+  // Scatter points across PCA map
+  (function(){
+    const pts = document.getElementById('mapPoints');
+    const clusters = [
+      {cls:'alpha', cx:28, cy:32, n:18, spread:9},
+      {cls:'bravo', cx:60, cy:44, n:16, spread:11},
+      {cls:'charlie', cx:46, cy:70, n:12, spread:11},
+      {cls:'delta', cx:82, cy:76, n:4, spread:6},
+    ];
+    clusters.forEach(c=>{
+      for(let i=0;i<c.n;i++){
+        const el = document.createElement('div');
+        el.className = 'pt '+c.cls;
+        const x = c.cx + (Math.random()-.5)*c.spread*2;
+        const y = c.cy + (Math.random()-.5)*c.spread*2;
+        el.style.left = Math.max(5,Math.min(95,x))+'%';
+        el.style.top = Math.max(5,Math.min(90,y))+'%';
+        el.style.animationDelay = (Math.random()*3)+'s';
+        pts.appendChild(el);
+      }
+    });
+  })();
+
+  // Reveal on scroll
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);}});
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>

@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Crime Atlas — Intelligence Command Center</title>
+<meta name="description" content="Crime Atlas: K-Means powered crime intelligence command center analyzing crime patterns across Indian cities." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0A0A;
+    --panel:#141414;
+    --panel-2:#181818;
+    --line:#262626;
+    --accent:#B91C1C;
+    --accent-glow:rgba(185,28,28,.45);
+    --text:#E5E5E5;
+    --muted:#9CA3AF;
+    --success:#22C55E;
+    --warning:#F59E0B;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--accent);color:#fff}
+
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      linear-gradient(rgba(229,229,229,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(229,229,229,.04) 1px, transparent 1px);
+    background-size:48px 48px;
+    mask-image:radial-gradient(ellipse at center, #000 30%, transparent 80%);
+    animation:gridShift 30s linear infinite;
+  }
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 3px);
+    mix-blend-mode:overlay;
+  }
+  @keyframes gridShift{
+    0%{background-position:0 0,0 0}
+    100%{background-position:48px 48px,48px 48px}
+  }
+
+  .wrap{position:relative;z-index:2;max-width:1320px;margin:0 auto;padding:32px 28px}
+  h1,h2,h3,h4{font-family:'Bebas Neue',sans-serif;letter-spacing:.06em;font-weight:400}
+  .mono{font-family:var(--mono);letter-spacing:.05em}
+  .muted{color:var(--muted)}
+
+  /* Top status bar */
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 28px;border-bottom:1px solid var(--line);
+    background:rgba(10,10,10,.85);backdrop-filter:blur(10px);
+  }
+  .brand{display:flex;align-items:center;gap:12px;font-family:'Bebas Neue';font-size:22px;letter-spacing:.18em}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent-glow);animation:pulse 1.6s infinite}
+  .topbar-nav{display:flex;gap:28px;font-size:13px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+  .topbar-nav a{transition:color .2s}
+  .topbar-nav a:hover{color:var(--text)}
+  .topbar-nav a.active{color:var(--text);position:relative}
+  .topbar-nav a.active::after{content:"";position:absolute;left:0;right:0;bottom:-16px;height:2px;background:var(--accent)}
+  .status-row{display:flex;gap:18px;font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase}
+  .status-row span b{color:var(--text);font-weight:600}
+  .live{display:inline-flex;align-items:center;gap:6px;color:var(--success)}
+  .live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 8px var(--success);animation:pulse 1.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
+
+  /* HERO */
+  .hero{position:relative;padding:90px 0 70px;overflow:hidden;border-bottom:1px solid var(--line)}
+  .hero::before{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(800px 400px at 20% 20%, rgba(185,28,28,.18), transparent 60%),
+      radial-gradient(700px 400px at 80% 80%, rgba(185,28,28,.10), transparent 60%);
+    z-index:-1;
+  }
+  .hero-stamp{
+    display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.3em;
+    border:1px solid var(--accent);color:var(--accent);padding:6px 12px;text-transform:uppercase;
+    transform:rotate(-1deg);margin-bottom:24px;background:rgba(185,28,28,.06)
+  }
+  .hero h1{font-size:clamp(48px,8vw,110px);line-height:.95;color:#fff;text-shadow:0 0 40px rgba(185,28,28,.2)}
+  .hero h1 span{color:var(--accent)}
+  .hero .sub{margin-top:18px;max-width:720px;color:var(--muted);font-size:17px;line-height:1.6}
+  .badge-row{margin-top:34px;display:flex;flex-wrap:wrap;gap:12px}
+  .badge{
+    display:inline-flex;align-items:center;gap:10px;
+    border:1px solid var(--line);background:rgba(20,20,20,.7);
+    padding:10px 14px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+    backdrop-filter:blur(6px);
+  }
+  .badge .ind{width:8px;height:8px;border-radius:50%}
+  .ind.red{background:var(--accent);box-shadow:0 0 10px var(--accent-glow);animation:pulse 1.4s infinite}
+  .ind.green{background:var(--success);box-shadow:0 0 10px var(--success)}
+  .ind.amber{background:var(--warning);box-shadow:0 0 10px var(--warning)}
+  .badge b{color:var(--text);font-weight:600}
+
+  .scanner{
+    position:absolute;left:0;right:0;top:0;height:2px;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    animation:scan 6s linear infinite;opacity:.5
+  }
+  @keyframes scan{0%{transform:translateY(0)}100%{transform:translateY(560px)}}
+
+  /* Section */
+  .sec{padding:80px 0;border-bottom:1px solid var(--line);position:relative}
+  .sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:36px;flex-wrap:wrap}
+  .sec-tag{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--accent);text-transform:uppercase}
+  .sec-title{font-size:clamp(32px,4.5vw,56px);color:#fff;margin-top:8px}
+  .sec-desc{color:var(--muted);max-width:520px;font-size:14px;line-height:1.6}
+
+  /* KPI STATS */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .stat{
+    position:relative;background:var(--panel);border:1px solid var(--line);padding:24px;
+    transition:.3s ease;overflow:hidden;
+  }
+  .stat::before{content:"";position:absolute;left:0;top:0;width:3px;height:100%;background:var(--accent);opacity:.6}
+  .stat:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:0 20px 40px -20px var(--accent-glow), 0 0 0 1px rgba(185,28,28,.25)}
+  .stat .ic{width:38px;height:38px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;margin-bottom:18px;color:var(--accent)}
+  .stat .label{font-family:var(--mono);font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--muted)}
+  .stat .val{font-family:'Bebas Neue';font-size:54px;color:#fff;line-height:1;margin-top:6px}
+  .stat .meta{margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--success)}
+
+  /* CLUSTER SUMMARY CARDS */
+  .cases{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .case{
+    position:relative;background:linear-gradient(180deg, #161616, #101010);
+    border:1px solid var(--line);padding:24px;overflow:hidden;transition:.3s;
+  }
+  .case::after{
+    content:"CLASSIFIED";position:absolute;right:-30px;top:18px;transform:rotate(35deg);
+    font-family:var(--mono);font-size:9px;letter-spacing:.3em;color:var(--accent);
+    border:1px solid var(--accent);padding:3px 28px;opacity:.5
+  }
+  .case:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:0 20px 40px -20px var(--accent-glow)}
+  .case .file{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--accent)}
+  .case h3{font-size:26px;color:#fff;margin-top:10px;line-height:1.1}
+  .case .desc{margin-top:12px;font-size:13px;color:var(--muted);line-height:1.55}
+  .case .cities{margin-top:14px;font-family:var(--mono);font-size:10px;letter-spacing:.15em;color:var(--text);text-transform:uppercase;border-top:1px solid var(--line);padding-top:14px}
+  .case .cities span{color:var(--muted);display:block;margin-bottom:4px;font-size:10px;letter-spacing:.2em}
+  .threat{margin-top:16px;display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px dashed var(--line)}
+  .threat .l{font-family:var(--mono);font-size:10px;letter-spacing:.25em;color:var(--muted);text-transform:uppercase}
+  .threat .v{font-family:'Bebas Neue';font-size:20px;letter-spacing:.1em}
+  .t-high{color:var(--accent)}
+  .t-med{color:var(--warning)}
+  .t-low{color:var(--success)}
+  .t-spec{color:#a78bfa}
+
+  /* DISTRIBUTION BAR */
+  .dist-wrap{
+    background:var(--panel);border:1px solid var(--line);padding:36px;
+  }
+  .dist-title{font-family:var(--mono);font-size:11px;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;margin-bottom:28px}
+  .dist-bar{display:flex;height:56px;overflow:hidden;border:1px solid var(--line);gap:2px}
+  .dist-seg{
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Bebas Neue';font-size:14px;letter-spacing:.1em;color:#fff;
+    transition:flex .8s ease;position:relative;overflow:hidden;
+    cursor:default;
+  }
+  .dist-seg::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.3)}
+  .dist-seg span{position:relative;z-index:2;font-size:11px;letter-spacing:.2em;padding:0 8px;text-align:center;line-height:1.3}
+  .seg-a{background:#B91C1C}
+  .seg-b{background:#D97706}
+  .seg-c{background:#16A34A}
+  .seg-d{background:#7C3AED}
+  .dist-labels{display:flex;gap:0;margin-top:12px}
+  .dist-lbl{flex:1;font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;padding:0 4px}
+  .dist-lbl b{display:block;font-family:'Bebas Neue';font-size:22px;color:var(--text);letter-spacing:.06em;margin-top:4px}
+
+  /* FINDINGS */
+  .findings{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+  .finding{
+    background:var(--panel);border:1px solid var(--line);padding:26px;position:relative;transition:.3s
+  }
+  .finding:hover{border-color:var(--accent);transform:translateY(-3px)}
+  .finding .num{font-family:'Bebas Neue';font-size:46px;color:var(--accent);line-height:1}
+  .finding h4{font-size:22px;color:#fff;margin-top:10px;letter-spacing:.04em}
+  .finding p{color:var(--muted);font-size:14px;line-height:1.65;margin-top:10px}
+  .finding .tag{margin-top:18px;display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.25em;color:var(--accent);text-transform:uppercase;border-top:1px solid var(--line);padding-top:12px}
+
+  /* OBSERVATIONS */
+  .obs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .obs{background:var(--panel);border:1px solid var(--line);padding:26px;position:relative;transition:.3s;overflow:hidden}
+  .obs::before{content:"";position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .4s}
+  .obs:hover::before{transform:scaleX(1)}
+  .obs .label{font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;margin-bottom:12px}
+  .obs h4{font-size:20px;color:#fff;margin-bottom:10px}
+  .obs p{font-size:13px;color:var(--muted);line-height:1.6}
+
+  /* Model Terminal */
+  .terminal{
+    background:#0c0c0c;border:1px solid var(--line);padding:0;font-family:var(--mono);position:relative;overflow:hidden
+  }
+  .term-head{
+    display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid var(--line);background:#111
+  }
+  .term-head .dots{display:flex;gap:6px}
+  .term-head .dots span{width:10px;height:10px;border-radius:50%;background:#333}
+  .term-head .dots span:first-child{background:var(--accent)}
+  .term-head .dots span:nth-child(2){background:var(--warning)}
+  .term-head .dots span:last-child{background:var(--success)}
+  .term-title{font-size:11px;color:var(--muted);letter-spacing:.25em;text-transform:uppercase}
+  .term-body{padding:24px 22px;font-size:13px;line-height:2}
+  .term-body .ln{display:flex;gap:14px;align-items:center}
+  .term-body .k{color:var(--muted);width:200px;text-transform:uppercase;letter-spacing:.15em;font-size:11px}
+  .term-body .v{color:var(--text)}
+  .term-body .v.green{color:var(--success)}
+  .cursor{display:inline-block;width:8px;height:14px;background:var(--accent);animation:blink 1s steps(2) infinite;vertical-align:middle;margin-left:4px}
+  @keyframes blink{50%{opacity:0}}
+
+  .model-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}
+  .meters{display:flex;flex-direction:column;gap:14px}
+  .meter{background:var(--panel);border:1px solid var(--line);padding:18px}
+  .meter .top{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase}
+  .meter .top b{color:var(--text)}
+  .bar{margin-top:12px;height:6px;background:#1c1c1c;position:relative;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#ef4444);box-shadow:0 0 12px var(--accent-glow);width:0;transition:width 1.4s ease}
+
+  /* Intelligence Summary */
+  .intel-wrap{
+    background:var(--panel);border:1px solid var(--line);padding:48px;position:relative;overflow:hidden;
+  }
+  .intel-wrap::before{
+    content:"INTELLIGENCE SUMMARY";position:absolute;right:-60px;top:28px;transform:rotate(20deg);
+    font-family:'Bebas Neue';font-size:80px;color:rgba(185,28,28,.04);letter-spacing:.1em;pointer-events:none;
+  }
+  .intel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;position:relative;z-index:2}
+  .intel-item .label{font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:var(--accent);text-transform:uppercase;margin-bottom:10px}
+  .intel-item h4{font-size:22px;color:#fff;margin-bottom:10px}
+  .intel-item p{font-size:13px;color:var(--muted);line-height:1.6}
+
+  /* Footer */
+  .foot{padding:90px 0 40px;text-align:center;position:relative;overflow:hidden}
+  .foot::before{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(600px 300px at 50% 0, rgba(185,28,28,.15), transparent 70%);z-index:-1
+  }
+  .stamp{
+    display:inline-block;border:3px solid var(--success);color:var(--success);
+    padding:14px 36px;font-family:'Bebas Neue';font-size:30px;letter-spacing:.3em;
+    transform:rotate(-3deg);margin-bottom:30px;text-shadow:0 0 12px rgba(34,197,94,.4);
+    box-shadow:0 0 30px rgba(34,197,94,.15)
+  }
+  .foot h2{font-size:clamp(40px,6vw,72px);color:#fff;line-height:1}
+  .foot p{margin-top:14px;color:var(--muted)}
+  .sig{margin-top:40px;border-top:1px solid var(--line);padding-top:24px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase}
+  .sig b{color:var(--text)}
+
+  /* Reveal */
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .8s ease, transform .8s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  /* Responsive */
+  @media (max-width:980px){
+    .stats,.cases{grid-template-columns:repeat(2,1fr)}
+    .findings{grid-template-columns:1fr}
+    .model-grid{grid-template-columns:1fr}
+    .obs-grid{grid-template-columns:1fr}
+    .intel-grid{grid-template-columns:1fr}
+    .status-row,.topbar-nav{display:none}
+  }
+  @media (max-width:560px){
+    .stats,.cases{grid-template-columns:1fr}
+    .wrap{padding:24px 18px}
+    .sec{padding:60px 0}
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP STATUS BAR -->
+<div class="topbar">
+  <div class="brand"><span class="dot"></span> CRIME ATLAS / CIC</div>
+  <div class="topbar-nav">
+    <a href="/">Home</a>
+    <a href="/dashboard" class="active">Command</a>
+    <a href="/clusters">Patterns</a>
+    <a href="/predict">Predictor</a>
+    <a href="/about">Case File</a>
+  </div>
+  <div class="status-row">
+    <span>SECTOR <b>IN-001</b></span>
+    <span>CLEARANCE <b>LVL-04</b></span>
+    <span class="live">SECURE LINK</span>
+    <span class="mono" id="clock">--:--:-- UTC</span>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="scanner"></div>
+  <div class="wrap">
+    <div class="hero-stamp reveal">// EXECUTIVE OVERVIEW — ANALYSIS COMPLETE</div>
+    <h1 class="reveal">CRIME INTELLIGENCE<br/><span>COMMAND</span> CENTER</h1>
+    <p class="sub reveal">The K-Means model has finished. Fifty Indian cities have been sorted into four behavioral profiles. This is the command center — the full output of the analysis, condensed into actionable intelligence.</p>
+    <div class="badge-row reveal">
+      <div class="badge"><span class="ind green"></span>ANALYSIS <b>COMPLETE</b></div>
+      <div class="badge"><span class="ind green"></span>4 CLUSTERS <b>IDENTIFIED</b></div>
+      <div class="badge"><span class="ind amber"></span>SILHOUETTE <b>0.26</b></div>
+      <div class="badge"><span class="ind red"></span>OUTLIERS <b>FLAGGED</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- KPI CARDS -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div>
+        <div class="sec-tag">// SECTION 01 — KEY STATISTICS</div>
+        <h2 class="sec-title">Model Output Summary</h2>
+      </div>
+      <p class="sec-desc">Top-line figures from the completed clustering run. These are the numbers that define what the model discovered.</p>
+    </div>
+    <div class="stats">
+      <div class="stat reveal">
+        <div class="ic">▣</div>
+        <div class="label">Cities Profiled</div>
+        <div class="val" data-count="50">0</div>
+        <div class="meta">+ ALL MAJOR METRO ZONES</div>
+      </div>
+      <div class="stat reveal">
+        <div class="ic">≣</div>
+        <div class="label">Crime Records Processed</div>
+        <div class="val" data-count="40251">0</div>
+        <div class="meta">+ RAW INCIDENT RECORDS</div>
+      </div>
+      <div class="stat reveal">
+        <div class="ic">◈</div>
+        <div class="label">Clusters Discovered</div>
+        <div class="val" data-count="4">0</div>
+        <div class="meta">+ K-MEANS OUTPUT</div>
+      </div>
+      <div class="stat reveal">
+        <div class="ic">∿</div>
+        <div class="label">Silhouette Score</div>
+        <div class="val" data-count="0.26" data-decimal="2">0.00</div>
+        <div class="meta">+ CLUSTER SEPARATION INDEX</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLUSTER DISTRIBUTION -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div>
+        <div class="sec-tag">// SECTION 02 — CLUSTER DISTRIBUTION</div>
+        <h2 class="sec-title">How Cities Divided</h2>
+      </div>
+      <p class="sec-desc">The K-Means model sorted 50 cities into four behavioral groups. This is where they landed.</p>
+    </div>
+    <div class="dist-wrap reveal">
+      <div class="dist-title">// CITY DISTRIBUTION ACROSS 4 CLUSTERS</div>
+      <div class="dist-bar">
+        <div class="dist-seg seg-a" style="flex:18"><span>CLUSTER 0<br/>18 Cities</span></div>
+        <div class="dist-seg seg-b" style="flex:16"><span>CLUSTER 1<br/>16 Cities</span></div>
+        <div class="dist-seg seg-c" style="flex:12"><span>CLUSTER 2<br/>12 Cities</span></div>
+        <div class="dist-seg seg-d" style="flex:4"><span>CLUSTER 3<br/>4 Cities</span></div>
+      </div>
+      <div class="dist-labels">
+        <div class="dist-lbl">High Crime Metropolitan<b>Cluster 0 · 36%</b></div>
+        <div class="dist-lbl">Moderate Crime Cities<b>Cluster 1 · 32%</b></div>
+        <div class="dist-lbl">Low Crime Cities<b>Cluster 2 · 24%</b></div>
+        <div class="dist-lbl">Outlier Cities<b>Cluster 3 · 8%</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CLUSTER INTELLIGENCE SUMMARY -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div>
+        <div class="sec-tag">// SECTION 03 — CLUSTER PROFILES</div>
+        <h2 class="sec-title">Open Case Files</h2>
+      </div>
+      <p class="sec-desc">Four behavioral profiles. Each cluster is an active intelligence case with its own designated threat level.</p>
+    </div>
+    <div class="cases">
+      <div class="case reveal">
+        <div class="file">CLUSTER 0</div>
+        <h3>High Crime Metropolitan</h3>
+        <p class="desc">Dense urban centers with the highest crime volumes, elevated weapon involvement, and stretched enforcement resources.</p>
+        <div class="cities">
+          <span>Representative Cities</span>
+          Delhi · Mumbai · Bangalore
+        </div>
+        <div class="threat"><span class="l">Threat Level</span><span class="v t-high">HIGH</span></div>
+      </div>
+      <div class="case reveal">
+        <div class="file">CLUSTER 1</div>
+        <h3>Moderate Crime Cities</h3>
+        <p class="desc">Mid-tier metros with sustained mixed-category activity. Stable but warrant continuous monitoring.</p>
+        <div class="cities">
+          <span>Representative Cities</span>
+          Pune · Jaipur · Lucknow
+        </div>
+        <div class="threat"><span class="l">Threat Level</span><span class="v t-med">MEDIUM</span></div>
+      </div>
+      <div class="case reveal">
+        <div class="file">CLUSTER 2</div>
+        <h3>Low Crime Cities</h3>
+        <p class="desc">Smaller jurisdictions with contained incident profiles, high closure ratios, and minimal weapon activity.</p>
+        <div class="cities">
+          <span>Representative Cities</span>
+          Chandigarh · Indore · Bhopal
+        </div>
+        <div class="threat"><span class="l">Threat Level</span><span class="v t-low">LOW</span></div>
+      </div>
+      <div class="case reveal">
+        <div class="file">CLUSTER 3</div>
+        <h3>Outlier Cities</h3>
+        <p class="desc">Anomalous fingerprints diverging from all primary clusters. Unique crime signatures flagged for specialist review.</p>
+        <div class="cities">
+          <span>Representative Cities</span>
+          Srinagar · Patna
+        </div>
+        <div class="threat"><span class="l">Threat Level</span><span class="v t-spec">SPECIAL REVIEW</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- KEY FINDINGS -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div>
+        <div class="sec-tag">// SECTION 04 — KEY FINDINGS</div>
+        <h2 class="sec-title">Intelligence Findings</h2>
+      </div>
+      <p class="sec-desc">The four most significant conclusions drawn from the cluster analysis. Each finding is verified by the model output.</p>
+    </div>
+    <div class="findings">
+      <div class="finding reveal">
+        <div class="num">01</div>
+        <h4>Weapon Crime Rate Is The Primary Separator</h4>
+        <p>Across the PCA projection, weapon crime rate was the single most discriminating variable — cleanly dividing high-threat clusters from the rest of the city population.</p>
+        <span class="tag">SOURCE — PCA COMPONENT ANALYSIS</span>
+      </div>
+      <div class="finding reveal">
+        <div class="num">02</div>
+        <h4>Metro Cities Form A Distinct, Isolated Profile</h4>
+        <p>Major metropolitan centers clustered tightly together and separated clearly from all other city groups — generating a recognizable high-crime signature unique to dense urban environments.</p>
+        <span class="tag">SOURCE — CLUSTER 0 · HIGH CRIME METRO</span>
+      </div>
+      <div class="finding reveal">
+        <div class="num">03</div>
+        <h4>Police Deployment Does Not Scale With Closure Rate</h4>
+        <p>Cities in the high-crime cluster deploy significantly more officers per capita — yet their case closure rates remain no higher, and in some instances lower, than smaller cities in Cluster 2.</p>
+        <span class="tag">SOURCE — CROSS-CLUSTER COMPARISON</span>
+      </div>
+      <div class="finding reveal">
+        <div class="num">04</div>
+        <h4>Outlier Cities Demand Individual Investigation</h4>
+        <p>Cluster 3 cities contain crime signatures that resist pattern-matching with all primary centroids. High weapon rate without proportional volume, or unusual demographic concentrations, make these cases unique.</p>
+        <span class="tag">SOURCE — CLUSTER 3 · OUTLIERS</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NOTABLE OBSERVATIONS -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div>
+        <div class="sec-tag">// SECTION 05 — NOTABLE OBSERVATIONS</div>
+        <h2 class="sec-title">Field Observations</h2>
+      </div>
+      <p class="sec-desc">Supplementary intelligence notes drawn from the cluster boundaries and inter-cluster comparisons.</p>
+    </div>
+    <div class="obs-grid">
+      <div class="obs reveal">
+        <div class="label">// OBS-01 · VICTIM AGE</div>
+        <h4>Demographic Skew Is Cluster-Specific</h4>
+        <p>Average victim age splits meaningfully across clusters. High-crime metros skew younger; low-crime cities show older victim profiles — suggesting distinct social exposure patterns per archetype.</p>
+      </div>
+      <div class="obs reveal">
+        <div class="label">// OBS-02 · GEOGRAPHY</div>
+        <h4>Geography Does Not Predict Cluster Membership</h4>
+        <p>Cities in the same state, or even the same region, often land in different clusters. Behavioral similarity is driven by socioeconomic and enforcement characteristics — not physical proximity.</p>
+      </div>
+      <div class="obs reveal">
+        <div class="label">// OBS-03 · CLOSURE RATE</div>
+        <h4>Case Closure Rate Is The Weakest Signal</h4>
+        <p>Despite being included as a feature, case closure rate had the lowest discriminating power in the PCA projection. Its variance across all clusters was relatively uniform — suggesting systemic consistency regardless of crime level.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SYSTEM STATUS -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div>
+        <div class="sec-tag">// SECTION 06 — SYSTEM STATUS</div>
+        <h2 class="sec-title">Model Readout</h2>
+      </div>
+      <p class="sec-desc">Current operational state of the Crime Atlas intelligence system.</p>
+    </div>
+    <div class="model-grid">
+      <div class="terminal reveal">
+        <div class="term-head">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <div class="term-title">/ secure-shell · crime-atlas@cic </div>
+          <div class="term-title">UPLINK 100%</div>
+        </div>
+        <div class="term-body">
+          <div class="ln"><span class="k">Algorithm</span><span class="v">K-Means Clustering</span></div>
+          <div class="ln"><span class="k">Features</span><span class="v">5</span></div>
+          <div class="ln"><span class="k">Clusters</span><span class="v">4</span></div>
+          <div class="ln"><span class="k">Visualization</span><span class="v">Principal Component Analysis</span></div>
+          <div class="ln"><span class="k">Silhouette Score</span><span class="v green">0.26 · MODERATE</span></div>
+          <div class="ln"><span class="k">Cities Profiled</span><span class="v">50</span></div>
+          <div class="ln"><span class="k">Records Processed</span><span class="v">40,251</span></div>
+          <div class="ln"><span class="k">Status</span><span class="v green">OPERATIONAL<span class="cursor"></span></span></div>
+        </div>
+      </div>
+      <div class="meters">
+        <div class="meter reveal">
+          <div class="top"><span>CLUSTER SEPARATION</span><b>High Crime vs Low</b></div>
+          <div class="bar"><i data-fill="84"></i></div>
+        </div>
+        <div class="meter reveal">
+          <div class="top"><span>WEAPON RATE SIGNAL</span><b>Primary Driver</b></div>
+          <div class="bar"><i data-fill="91"></i></div>
+        </div>
+        <div class="meter reveal">
+          <div class="top"><span>CLOSURE RATE SIGNAL</span><b>Weak Driver</b></div>
+          <div class="bar"><i data-fill="28"></i></div>
+        </div>
+        <div class="meter reveal">
+          <div class="top"><span>DATA INTEGRITY</span><b>99%</b></div>
+          <div class="bar"><i data-fill="99"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMMAND FOOTER -->
+<footer class="foot">
+  <div class="wrap">
+    <div class="stamp reveal">CASE CLOSED · SUCCESSFULLY</div>
+    <h2 class="reveal">CRIME ATLAS<br/>INTELLIGENCE PLATFORM</h2>
+    <p class="reveal muted">Machine Learning Powered Crime Analysis System</p>
+    <div class="sig">
+      <span>FILE · <b>CCC-2025-IN</b></span>
+      <span>CLEARANCE · <b>LVL-04</b></span>
+      <span>ANALYST · <b>CRIME ATLAS UNIT</b></span>
+      <span>STATUS · <b style="color:var(--success)">CLOSED SUCCESSFULLY</b></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Live clock (UTC)
+  const clock = document.getElementById('clock');
+  function tick(){
+    const d = new Date();
+    const p = n => String(n).padStart(2,'0');
+    clock.textContent = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())} UTC`;
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Reveal on scroll
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+  // Animated counters
+  function animateCount(el){
+    const target = parseFloat(el.dataset.count);
+    const decimals = parseInt(el.dataset.decimal||'0',10);
+    const duration = 1600;
+    const start = performance.now();
+    function frame(now){
+      const t = Math.min(1,(now-start)/duration);
+      const eased = 1 - Math.pow(1-t,3);
+      const val = target * eased;
+      el.textContent = decimals ? val.toFixed(decimals) : Math.floor(val).toLocaleString();
+      if(t<1) requestAnimationFrame(frame);
+      else el.textContent = decimals ? target.toFixed(decimals) : target.toLocaleString();
+    }
+    requestAnimationFrame(frame);
+  }
+  const cio = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ animateCount(e.target); cio.unobserve(e.target); }
+    });
+  },{threshold:.4});
+  document.querySelectorAll('[data-count]').forEach(el=>cio.observe(el));
+
+  // Meter bars
+  const mio = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.querySelectorAll('[data-fill]').forEach(b=>{ b.style.width = b.dataset.fill + '%'; });
+        mio.unobserve(e.target);
+      }
+    });
+  },{threshold:.3});
+  document.querySelectorAll('.meters').forEach(el=>mio.observe(el));
+</script>
+</body>
+</html>
